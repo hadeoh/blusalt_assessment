@@ -1,0 +1,57 @@
+# YML version
+version: '3'
+
+# Define all the services our book application needs
+services:
+  customer-service:  # node application
+    restart: always # automatically restart if the app fails
+    build: ./customer_service # build the image from the dockerfile present in the customer_service directory
+    image: blusalt/customer-service:1.0.0
+    depends_on:
+      - mongo
+      - rabbitmq
+    environment: # environment variables
+      - NODE_ENV=development
+      - PORT=5000
+      - MESSAGE_QUEUE=amqp://localhost:5672
+      - MONGO_CONN_CUSTOMERS= # this should be the same as the name of the DB service below
+    ports: 
+      - '5000:5000' # map the ports as <host-port>:<container-port . The container-port should be the same as the PORT defined in environment.
+  
+  billing-service:  # node application
+    restart: always # automatically restart if the app fails
+    build: ./billing_service # build the image from the dockerfile present in the billing_service directory
+    image: blusalt/billing-service:1.0.0
+    depends_on:
+      - mongo
+      - rabbitmq
+    environment: # environment variables
+      - NODE_ENV=development
+      - PORT=3000
+      - MESSAGE_QUEUE=amqp://localhost:5672
+      - MONGO_CONN_TRANSACTIONS= 
+  
+  billing-worker-service:  # node application
+    restart: always # automatically restart if the app fails
+    build: ./billing_worker_service # build the image from the dockerfile present in the billing_worker_service directory
+    image: blusalt/billing-worker-service:1.0.0
+    depends_on:
+      - rabbitmq
+    environment: # environment variables
+      - NODE_ENV=development
+      - PORT=4000
+      - MESSAGE_QUEUE=amqp://localhost:5672
+  
+  mongo: # database
+    image: mongo:4.2 # pull the mongo image from docker hub
+    logging: 
+      driver: none # disable logging
+    ports:
+      - '27017:27017'
+  
+  rabbitmq: # rabbitmq
+    image: rabbitmq:3.8.9 # pull the rabbitmq image from  dockerhub
+    logging: 
+      driver: none # disable logging
+    ports:
+      - '5672:5672'
